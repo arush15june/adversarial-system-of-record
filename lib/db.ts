@@ -1,0 +1,10 @@
+import { DatabaseSync } from "node:sqlite"; import fs from "node:fs"; import path from "node:path"; import { SCHEMA,SEED } from "./sql";
+type V=string|number|bigint|null|Uint8Array; const g=globalThis as typeof globalThis & {__db?:DatabaseSync;__remote?:any;__init?:Promise<void>};
+const remote=()=>Boolean(process.env.TURSO_DATABASE_URL);
+async function rdb(){if(!g.__remote){const {createClient}=await import("@tursodatabase/serverless/compat");g.__remote=createClient({url:process.env.TURSO_DATABASE_URL!,authToken:process.env.TURSO_AUTH_TOKEN})}return g.__remote}
+function ldb(){if(!g.__db){const p=process.env.LOCAL_SQLITE_PATH||path.join(process.cwd(),"data","adversarial.db");fs.mkdirSync(path.dirname(p),{recursive:true});g.__db=new DatabaseSync(p);g.__db.exec("PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL;")}return g.__db}
+export async function query<T=Record<string,unknown>>(sql:string,args:V[]=[]):Promise<T[]>{const rows=remote()?(await (await rdb()).execute({sql,args})).rows:ldb().prepare(sql).all(...args);return rows.map((row:Record<string,unknown>)=>({...row})) as T[]}
+export async function run(sql:string,args:V[]=[]){if(remote()){const x=await (await rdb()).execute({sql,args});return {changes:Number(x.rowsAffected||0),id:Number(x.lastInsertRowid||0)}}const x=ldb().prepare(sql).run(...args);return {changes:Number(x.changes),id:Number(x.lastInsertRowid||0)}}
+async function init(){if(remote()){for(const s of SCHEMA.split(";").map(x=>x.trim()).filter(Boolean))await (await rdb()).execute(s)}else ldb().exec(SCHEMA);const n=await query<{n:number}>("SELECT COUNT(*) n FROM organizations");if(Number(n[0]?.n||0)===0){if(remote()){for(const s of SEED)await (await rdb()).execute(s)}else for(const s of SEED)ldb().exec(s)}}
+export async function ensureDb(){if(!g.__init)g.__init=init();await g.__init}
+export async function audit(org:string,user:string,action:string,type:string,id?:string|number,details:any={}){await run("INSERT INTO audit_log(org_id,user_id,action,entity_type,entity_id,details_json) VALUES(?,?,?,?,?,?)",[org,user,action,type,id==null?null:String(id),JSON.stringify(details)])}

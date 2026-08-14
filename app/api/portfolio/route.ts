@@ -1,0 +1,1 @@
+import {ensureDb,query} from '@/lib/db';export async function GET(){await ensureDb();return Response.json(await query("SELECT o.*,p.risk_sla_percent,p.incidents_open,p.sev1,p.sev2,p.sev3,p.compliance_state FROM organizations o JOIN portfolio_stats p ON p.org_id=o.id ORDER BY o.name"))}

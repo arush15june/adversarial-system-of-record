@@ -1,0 +1,6 @@
+import { cookies } from "next/headers"; import { ensureDb,query } from "./db";
+export type User={id:string;org_id:string;email:string;name:string;role:string;initials:string;active:number};
+export async function currentUser(){await ensureDb();const id=(await cookies()).get("arm_user")?.value||"u_admin";const u=await query<User>("SELECT * FROM users WHERE id=? AND active=1",[id]);return u[0]||(await query<User>("SELECT * FROM users WHERE id='u_admin'"))[0]}
+export async function users(){const u=await currentUser();return query<User>("SELECT * FROM users WHERE org_id=? AND active=1 ORDER BY name",[u.org_id])}
+export function can(role:string,module:string,action:"read"|"write"|"approve"="read"){if(role==="Admin")return true;if(role==="Editor")return module!=="settings"||action==="read";if(role==="Viewer")return action==="read"||module==="reports";if(role==="Risk Editor")return module!=="incident"&&module!=="settings";if(role==="Risk Viewer")return action==="read"&&module!=="incident";if(role==="Incident Editor")return module!=="risk"&&module!=="settings";if(role==="Incident Viewer")return action==="read"&&module!=="risk";return false}
+export async function guard(module:string,action:"read"|"write"|"approve"){const u=await currentUser();return {u,denied:can(u.role,module,action)?null:Response.json({error:"Forbidden",role:u.role},{status:403})}}
