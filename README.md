@@ -1,5 +1,7 @@
 # TRIC system of record: functional Next.js reconstruction
 
+<img width="1909" height="945" alt="image" src="https://github.com/user-attachments/assets/b44d3cac-608b-4f45-bc82-24f3df947223" />
+
 This repository is an independent functional reconstruction of a public security operations product. It uses original code, original CSS and seeded demo data. It does **not** contain third-party source code, private prompts, private procedure text, credentials, customer data or reverse-engineered authenticated endpoints.
 
 ## What is implemented
